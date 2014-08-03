@@ -29,6 +29,12 @@ lazydcc will download it.'''
     print usage.__doc__
 
 
+def leave_irc(irc):
+    'Sends a quit command to the server and exits'
+    irc.send('QUIT :bye')
+    sys.exit(0)
+
+
 def child_died(*_):
     'Signal from subprocess that the current file is down being downloaded'
     global DOWNLOADING
