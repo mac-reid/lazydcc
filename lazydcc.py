@@ -1,10 +1,7 @@
-#!/usr/bin/env python
+#/!/usr/bin/env python
 
 '''
-Automatically downloads wanted pack from irc xdcc bots.
-
-Should probably clean this up and use a config file or something because
-this source is bad... but that would require effort.
+Automatically downloads wanted packs from irc xdcc bots.
 '''
 
 import os
@@ -51,8 +48,8 @@ def initiate_download(irc, log, xdccbot, download_queue):
 def get_packlist(irc, xdccbot, file_name, log, file_prefix):
     'Acquires a list of packs a bot and search for files'
 
-    time.sleep(2)
     irc.send('PRIVMSG %s :xdcc send -1\r\n' % xdccbot)
+    print 'Acquiring Packlist'
     text = ''
     while True:
         text = irc.recv(4096)
@@ -63,14 +60,14 @@ def get_packlist(irc, xdccbot, file_name, log, file_prefix):
             print >> sys.stderr, 'Bot %s not found.' % xdccbot
             sys.exit(1)
         elif 'PING' in text:
-            pong(irc, text)
+            pong(irc, text, log)
     args = create_args_for_subprocess(text, file_prefix)
     try:
         subprocess.check_output(args)
     except subprocess.CalledProcessError as err:
         print >> sys.stderr, 'Fatal Error. See log.'
         log.write(str(err))
-        sys.exit(0)
+        sys.exit(1)
     with open(args[1], 'r') as packlist:
         file_name_split = file_name.split()
         download_queue = []
@@ -91,8 +88,9 @@ def get_packlist(irc, xdccbot, file_name, log, file_prefix):
     return download_queue
 
 
-def pong(irc, text):
+def pong(irc, text, log):
     'The "heartbeat" letting the server know we are still alive'
+    log.write('Sending ping response\n')
     irc.send('PONG ' + text.split()[1] + '\r\n')
 
 
@@ -117,7 +115,7 @@ def create_args_for_subprocess(data, file_prefix):
 
 def spawn_download(data, file_prefix):
     'Assumes data will be sent in as a ctcp reply from the bot'
-    args = create_args_for_subprocess(data)
+    args = create_args_for_subprocess(data, file_prefix)
     subprocess.Popen(args)
 
 
@@ -129,12 +127,25 @@ def process_forever(irc, xdccbot, log, download_queue, dest):
         if not DOWNLOADING:
             initiate_download(irc, log, xdccbot, download_queue)
             DOWNLOADING = True
-        text = irc.recv(4096)
+        # when the child sends a signal marking it's completion, this function
+        # may get interrupted and raise EINTR - we want to ignore that
+        try:
+            text = irc.recv(4096)
+        except socket.error as e:
+            if e.errno != 4:  # 4 is EINTR
+                raise
+            text = 'recv interrupted by child\n'
         log.write(text)
-        if text.startswith('PING'):
-            pong(irc, text)
-        elif '\x01DCC SEND' in text:
+        if 'PING' in text:
+            pong(irc, text, log)
+        if '\x01DCC SEND' in text:
             spawn_download(text, dest)
+        if DOWNLOADING and all(word in text for word in ['NOTICE', 'position']):
+            index = text.rindex('position') + 9
+            index = text[index]
+            if int(index) != 1:
+                print 'Stuck in queue - position %s' % index
+        log.flush()
 
 
 def ask_user_for(something):
@@ -214,6 +225,9 @@ def register(irc, server, botnick, channel):
 def begin():
     'Initialization'
     botnick, channel, _, dest, pack_name, server, xdccbot = setup()
+
+    if not channel.startswith('#'):
+        channel = '#%s' % channel
 
     signal.signal(signal.SIGUSR1, child_died)
 

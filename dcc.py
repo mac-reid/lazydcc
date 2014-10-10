@@ -55,14 +55,14 @@ def sizeof_fmt(num):
     'Print file size in human readable form'
     for x in ['By', 'KB', 'MB', 'GB', 'TB']:
         if num < 1000.0:
-            return "%3.1f %s" % (num, x)
+            return '%3.1f %s' % (num, x)
         num /= 1000.0
 
 
 def format_eta(total_bytes, bytes_received, speed):
     'format time till download complete'
     time_left = (total_bytes - bytes_received) // speed
-    ret = 'ETA %d sec' % time_left
+    ret = 'ETA %02d sec' % time_left
     return ret
 
 
@@ -73,22 +73,26 @@ def print_progress(bytes_received, total_bytes, start):
     if time_so_far <= 0:
         time_so_far = 0.1
     bps = bytes_received // time_so_far / 8
+
     percent = bytes_received / float(total_bytes)
-    strpercent = str(round(percent * 100, 1)) + '%'
+    strpercent = str(int(percent * 100)) + '%'
+    strpercent = strpercent.ljust(4)
     form_bts_rcvd = sizeof_fmt(bytes_received)
     speed = sizeof_fmt(bps)
     speed += '/s'
     eta = format_eta(total_bytes, bytes_received, bps)
+    total_bts_len = len(str(sizeof_fmt(total_bytes)))
 
     # minus 7 for spaces and square brackets
-    bar_len = get_columns() - len(strpercent) - len(form_bts_rcvd) \
-                            - len(speed) - len(eta) - 7
+    bar_len = get_columns() - len(strpercent) - total_bts_len - \
+                              len(speed) - len(eta) - 7
     equals = '=' * int(bar_len * percent)
     spaces = ' ' * (bar_len - len(equals))
 
     prog_bar = '[%s%s]' % (equals, spaces)
-    newbar = "{:<4}{} {}  {}  {}\r".format(strpercent, prog_bar, form_bts_rcvd,
-                                           speed, eta)
+    newbar = "{}{} {}  {}  {}\r".format(strpercent, prog_bar,
+                                        form_bts_rcvd.rjust(total_bts_len),
+                                        speed, eta)
     print newbar,  # why the comma makes this work, I'll never know
     sys.stdout.flush()
 
@@ -116,6 +120,7 @@ def begin():
     filesize = sys.argv[4]
 
     dcc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    dcc.settimeout(60)
 
     intip = int(remote_address)
     server = int2ip(intip)
@@ -124,14 +129,14 @@ def begin():
 
     if os.path.isfile(filename):
         print '%s exists on disk.' % os.path.basename(filename)
-        signal_parent(parent_process)
+        signal_parent()
         dcc.close()
         sys.exit(0)
 
     bytes_received = 0
     total_bytes = int(filesize)
 
-    # maybe change it to print every 2 seconds?
+    # maybe print every 2 seconds?
     with open(filename, 'w') as out:
         start = time.clock()  # http://stackoverflow.com/a/21868231
         print 'Downloading %s' % os.path.basename(filename)
@@ -152,7 +157,12 @@ def begin():
                 dcc.close()
                 print ''
                 break
-            data = dcc.recv(min(total_bytes - bytes_received, 4096))
+            try:
+                data = dcc.recv(min(total_bytes - bytes_received, 4096))
+            except socket.timeout:
+                signal_parent()
+                print >> sys.stderr, 'Timeout downloading %s' % filename
+
 
 if __name__ == '__main__':
     begin()
