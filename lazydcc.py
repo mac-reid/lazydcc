@@ -120,7 +120,7 @@ def create_args_for_subprocess(data):
 def spawn_download(data):
     'Assumes data will be sent in as a ctcp reply from the bot'
     args = create_args_for_subprocess(data)
-    subprocess.call(args)
+    subprocess.Popen(args)
 
 
 def process_forever(irc, xdccbot, log, download_queue):
