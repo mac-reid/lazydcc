@@ -36,7 +36,7 @@ def leave_irc(irc):
 
 
 def child_died(*_):
-    'Signal from subprocess that the current file is down being downloaded'
+    'Signal from child that the current file is done being downloaded'
     global DOWNLOADING
     DOWNLOADING = False
 
@@ -112,7 +112,6 @@ def create_args_for_subprocess(data):
     substr = data[start:end].replace('\x01', '')
     split_substr = shlex.split(substr)
     split_substr[0] = file_prefix + split_substr[0]
-    split_substr.append(str(os.getpid()))
     split_substr.insert(0, './dcc.py')
     return split_substr
 
@@ -169,7 +168,6 @@ def register(irc, server, botnick, channel):
 
 def begin():
     'Initialization'
-    # because global variables are in caps
     server, channel, xdccbot, botnick, file_name = setup()
 
     signal.signal(signal.SIGUSR1, child_died)
@@ -187,7 +185,7 @@ def begin():
                 os.remove('logs')
             except OSError:
                 print >> sys.stderr, 'Cannot create logs directory.'
-                sys.exit(1)
+                print >> sys.stderr, 'Continuing without logging.'
         os.mkdir('logs')
 
     with open(logfile, 'w') as mylog:
@@ -196,6 +194,7 @@ def begin():
             process_forever(irc, xdccbot, mylog, download_queue)
         except KeyboardInterrupt:
             sys.exit(0)
+
 
 if __name__ == '__main__':
     begin()

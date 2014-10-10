@@ -3,7 +3,7 @@
 '''
 Usage:
 
-    dcc.py filename address port filesize signalpid
+    dcc.py filename address port filesize
 
     where address is a 32 bit integer representing the ip address of the client
           port is the listening port on the remote client
@@ -93,26 +93,27 @@ def print_progress(bytes_received, total_bytes, start):
     sys.stdout.flush()
 
 
-def signal_parent(parent_process):
+def signal_parent():
     'because signals are neat'
-    if parent_process != os.getppid():  # because I am bad at programming
-        parent_process = os.getppid()
-    os.kill(int(parent_process), 10)    # 10 -> sigusr1
+    try:
+        os.kill(os.getppid(), 10)    # 10 -> sigusr1
+    except OSError as err:
+        if e.errno == 3:
+            print 'Parent is dead?'
+        else:
+            raise err
 
 
 def begin():
     'Connects to remote client and downloads the given file'
-    if len(sys.argv) < 6:
+    if len(sys.argv) < 5:
         print 'not enough arguments'
         sys.exit(1)
 
-    filename = sys.argv[1]
+    filename = sys.argv[1].replace(' ', '_')
     remote_address = sys.argv[2]
     remote_port = sys.argv[3]
     filesize = sys.argv[4]
-    parent_process = sys.argv[5]
-
-    filename = filename.replace(' ', '_')
 
     dcc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -147,7 +148,7 @@ def begin():
             if bytes_received == total_bytes:
                 if count != 0:
                     print_progress(bytes_received, total_bytes, start)
-                signal_parent(parent_process)
+                signal_parent()
                 dcc.close()
                 print ''
                 break
