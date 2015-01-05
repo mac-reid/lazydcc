@@ -1,6 +1,6 @@
 A bad irc bot to download stuff from xdcc bots.
 
-Built and tested with python 2.7. Uses only builtin modules. Sometimes fails.
+Built and tested with python 2.7 on Linux. Uses only builtin modules. Sometimes fails.
 
 Usage:
 

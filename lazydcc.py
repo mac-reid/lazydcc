@@ -208,8 +208,8 @@ def setup():
                  for i in args._get_kwargs())
 
 
-def register(irc, server, botnick, channel):
-    'sleep, I am too lazy to figure out the responses - also sometimes fails'
+def register(irc, server, botnick, channel, log):
+    'I am too lazy to figure out the responses - also sometimes fails'
     try:
         irc.connect((server, 6667))
     except socket.gaierror:
@@ -217,7 +217,12 @@ def register(irc, server, botnick, channel):
         sys.exit(1)
     irc.send('NICK ' + botnick + '\n')
     irc.send('USER ' + botnick + ' ' + botnick + ' ' + botnick + ' :hi\n')
-    time.sleep(2)
+    for _ in xrange(4):  # https://github.com/mac-reid/lazydcc/issues/1
+        msg = irc.recv(4096)
+        log_write(log, msg)
+        if msg.startswith('PING'):
+            pong(irc, msg, log)
+    print 'Joining %s' % channel
     irc.send('JOIN ' + channel + '\n')
     time.sleep(2)
 
@@ -241,14 +246,12 @@ def begin():
         else:
             os.mkdir('logs')
 
-    irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print 'Connecting to %s' % server
-
-    register(irc, server, botnick, channel)
-    print 'Joining %s' % channel
-
     with open(logfile, 'w') as mylog:
         try:
+            irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            print 'Connecting to %s' % server
+            register(irc, server, botnick, channel, mylog)
+
             download_queue = get_packlist(irc, xdccbot, pack_name, mylog, dest)
             process_forever(irc, xdccbot, mylog, download_queue, dest)
         except KeyboardInterrupt:
@@ -257,4 +260,3 @@ def begin():
 
 if __name__ == '__main__':
     begin()
-
