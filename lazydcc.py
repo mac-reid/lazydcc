@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import time
+import errno
 import shlex
 import socket
 import signal
@@ -41,8 +42,18 @@ def initiate_download(irc, log, xdccbot, download_queue):
         leave_irc(irc)
 
     msg = 'PRIVMSG %s :xdcc send %d' % (xdccbot, pack)
-    log.write('SENDING MSG: %s\n' % msg)
+    log_write(log, 'SENDING MSG: %s\n' % msg)
     irc.send(msg + '\r\n')
+
+
+def log_write(logfile, msg, debug=False):
+    'Writes a log to the logfile as well as print to stdout in debug mode'
+    if debug:
+        print msg.rstrip('\n')
+    if not msg.endswith('\n'):
+        logfile.write('%s\n' % msg)
+    else:
+        logfile.write(msg)
 
 
 def get_packlist(irc, xdccbot, file_name, log, file_prefix):
@@ -53,7 +64,7 @@ def get_packlist(irc, xdccbot, file_name, log, file_prefix):
     text = ''
     while True:
         text = irc.recv(4096)
-        log.write(text)
+        log_write(log, text)
         if '\x01DCC SEND' in text:
             break
         elif 'No such nick/channel' in text:
@@ -66,14 +77,14 @@ def get_packlist(irc, xdccbot, file_name, log, file_prefix):
         subprocess.check_output(args)
     except subprocess.CalledProcessError as err:
         print >> sys.stderr, 'Fatal Error. See log.'
-        log.write(str(err))
+        log_write(log, str(err))
         sys.exit(1)
     with open(args[1], 'r') as packlist:
         file_name_split = file_name.split()
         download_queue = []
         for line in packlist:
             if all(word.lower() in line.lower() for word in file_name_split):
-                pack_number = re.search('#([0-9]+) ', line)
+                pack_number = re.match('#([0-9]+) ', line)
                 if pack_number:
                     pack_number = pack_number.group(1)
                 else:
@@ -82,7 +93,7 @@ def get_packlist(irc, xdccbot, file_name, log, file_prefix):
                 download_queue.append(int(pack_number))
     os.remove(args[1])
     if not download_queue:
-        log.write('nothing found')
+        log_write(log, 'nothing found')
         print 'Nothing found'
         sys.exit(0)
     return download_queue
@@ -90,7 +101,7 @@ def get_packlist(irc, xdccbot, file_name, log, file_prefix):
 
 def pong(irc, text, log):
     'The "heartbeat" letting the server know we are still alive'
-    log.write('Sending ping response\n')
+    log_write(log, 'Sending ping response\n')
     irc.send('PONG ' + text.split()[1] + '\r\n')
 
 
@@ -104,6 +115,8 @@ def create_args_for_subprocess(data, file_prefix):
     size, process to notify when completed, and obviously the process to run.
     '''
 
+    if not file_prefix.endswith('/'):
+        file_prefix = file_prefix + '/'
     start = data.index('SEND') + 5  # index just after the 'SEND ' in the data
     end = len(data)
     substr = data[start:end].replace('\x01', '')
@@ -131,16 +144,16 @@ def process_forever(irc, xdccbot, log, download_queue, dest):
         # may get interrupted and raise EINTR - we want to ignore that
         try:
             text = irc.recv(4096)
-        except socket.error as e:
-            if e.errno != 4:  # 4 is EINTR
+        except socket.error as err:
+            if err.errno != errno.EINTR:
                 raise
             text = 'recv interrupted by child\n'
-        log.write(text)
+        log_write(log, text)
         if 'PING' in text:
             pong(irc, text, log)
         if '\x01DCC SEND' in text:
             spawn_download(text, dest)
-        if DOWNLOADING and all(word in text for word in ['NOTICE', 'position']):
+        if DOWNLOADING and all(wrd in text for wrd in ['NOTICE', 'position']):
             index = text.rindex('position') + 9
             index = text[index]
             if int(index) != 1:
@@ -178,7 +191,8 @@ def parse_args():
             print >> sys.stderr, 'Bad configuration file'
 
     parser = argparse.ArgumentParser(parents=[conf_parser],
-              description='Download files from xdcc bot based on filename.')
+                                     description='Download files from xdcc '
+                                                 'bot based on filename.')
     parser.set_defaults(**defaults)
     parser.add_argument('-m', '--bot-name', help='Bot name to download files',
                         dest='botnick')
