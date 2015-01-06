@@ -231,11 +231,20 @@ def register(irc, server, botnick, channel, log):
         sys.exit(1)
     irc.send('NICK ' + botnick + '\n')
     irc.send('USER ' + botnick + ' ' + botnick + ' ' + botnick + ' :hi\n')
-    for _ in xrange(4):  # https://github.com/mac-reid/lazydcc/issues/1
-        msg = irc.recv(4096)
+    irc.settimeout(2)
+    while True:  # https://github.com/mac-reid/lazydcc/issues/1
+        try:
+            msg = irc.recv(4096)
+        except socket.timeout:
+            break
         log_write(log, msg)
         if msg.startswith('PING'):
             pong(irc, msg, log)
+
+        # https://github.com/mac-reid/lazydcc/issues/5
+        if 'Nickname is already in use' in msg:
+            botnick += '_'  # append an underbar if our nick is already in use
+            irc.send('NICK ' + botnick + '\n')
     print 'Joining %s' % channel
     irc.send('JOIN ' + channel + '\n')
     time.sleep(2)
