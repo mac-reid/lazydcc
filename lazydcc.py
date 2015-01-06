@@ -245,6 +245,7 @@ def register(irc, server, botnick, channel, log):
         if 'Nickname is already in use' in msg:
             botnick += '_'  # append an underbar if our nick is already in use
             irc.send('NICK ' + botnick + '\n')
+    irc.settimeout(None)
     print 'Joining %s' % channel
     irc.send('JOIN ' + channel + '\n')
     time.sleep(2)
