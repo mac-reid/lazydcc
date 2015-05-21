@@ -69,10 +69,10 @@ def format_eta(total_bytes, bytes_received, speed):
 def print_progress(bytes_received, total_bytes, start):
     'This is not pretty'
 
-    time_so_far = time.clock() - start
+    time_so_far = time.time() - start
     if time_so_far <= 0:
         time_so_far = 0.1
-    bps = bytes_received // time_so_far / 8
+    bps = bytes_received // time_so_far
 
     percent = bytes_received / float(total_bytes)
     strpercent = str(int(percent * 100)) + '%'
@@ -138,7 +138,7 @@ def begin():
 
     # maybe print every 2 seconds?
     with open(filename, 'w') as out:
-        start = time.clock()  # http://stackoverflow.com/a/21868231
+        start = time.time()
         print 'Downloading %s' % os.path.basename(filename)
         data = dcc.recv(4096)
         count = 50
