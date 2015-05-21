@@ -13,7 +13,6 @@ Usage:
 '''
 
 import os
-import re
 import sys
 import time
 import socket
@@ -53,9 +52,9 @@ def int2ip(addr):
 
 def sizeof_fmt(num):
     'Print file size in human readable form'
-    for x in ['By', 'KB', 'MB', 'GB', 'TB']:
+    for size in ['By', 'KB', 'MB', 'GB', 'TB']:
         if num < 1000.0:
-            return '%3.1f %s' % (num, x)
+            return '%3.1f %s' % (num, size)
         num /= 1000.0
 
 
@@ -84,16 +83,16 @@ def print_progress(bytes_received, total_bytes, start):
     total_bts_len = len(str(sizeof_fmt(total_bytes)))
 
     # minus 7 for spaces and square brackets
-    bar_len = get_columns() - len(strpercent) - total_bts_len - \
-                              len(speed) - len(eta) - 7
+    bar_len = get_columns() - len(strpercent) - total_bts_len - len(speed) - \
+        len(eta) - len(str(time_so_far)) - 8
     equals = '=' * int(bar_len * percent)
     spaces = ' ' * (bar_len - len(equals))
 
     prog_bar = '[%s%s]' % (equals, spaces)
-    newbar = "{}{} {}  {}  {}\r".format(strpercent, prog_bar,
-                                        form_bts_rcvd.rjust(total_bts_len),
-                                        speed, eta)
-    print newbar,  # why the comma makes this work, I'll never know
+    newbar = "{}{} {}  {}  {} {}".format(strpercent, prog_bar,
+                                         form_bts_rcvd.rjust(total_bts_len),
+                                         speed, eta, time_so_far)
+    print newbar
     sys.stdout.flush()
 
 
@@ -102,7 +101,7 @@ def signal_parent():
     try:
         os.kill(os.getppid(), 10)    # 10 -> sigusr1
     except OSError as err:
-        if e.errno == 3:
+        if err.errno == 3:
             print 'Parent is dead?'
         else:
             raise err
