@@ -84,15 +84,15 @@ def print_progress(bytes_received, total_bytes, start):
 
     # minus 7 for spaces and square brackets
     bar_len = get_columns() - len(strpercent) - total_bts_len - len(speed) - \
-        len(eta) - len(str(time_so_far)) - 8
+        len(eta) - 7
     equals = '=' * int(bar_len * percent)
     spaces = ' ' * (bar_len - len(equals))
 
     prog_bar = '[%s%s]' % (equals, spaces)
-    newbar = "{}{} {}  {}  {} {}".format(strpercent, prog_bar,
+    newbar = "{}{} {}  {}  {}\r".format(strpercent, prog_bar,
                                          form_bts_rcvd.rjust(total_bts_len),
-                                         speed, eta, time_so_far)
-    print newbar
+                                         speed, eta)
+    print newbar,
     sys.stdout.flush()
 
 
