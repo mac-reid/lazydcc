@@ -61,8 +61,9 @@ def sizeof_fmt(num):
 def format_eta(total_bytes, bytes_received, speed):
     'format time till download complete'
     time_left = (total_bytes - bytes_received) // speed
-    ret = 'ETA %02d sec' % time_left
-    return ret
+    if time_left >= 60:
+        return 'ETA %d min' % time_left // 60
+    return 'ETA %d sec' % time_left
 
 
 def print_progress(bytes_received, total_bytes, start):
