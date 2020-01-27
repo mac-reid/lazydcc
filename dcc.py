@@ -62,7 +62,7 @@ def format_eta(total_bytes, bytes_received, speed):
     'format time till download complete'
     time_left = (total_bytes - bytes_received) // speed
     if time_left >= 60:
-        return 'ETA %d min' % time_left // 60
+        return 'ETA %d min' % (time_left // 60)
     return 'ETA %d sec' % time_left
 
 
@@ -83,9 +83,9 @@ def print_progress(bytes_received, total_bytes, start):
     eta = format_eta(total_bytes, bytes_received, bps)
     total_bts_len = len(str(sizeof_fmt(total_bytes)))
 
-    # minus 7 for spaces and square brackets
+    # minus 7 for spaces and square brackets and one for safety
     bar_len = get_columns() - len(strpercent) - total_bts_len - len(speed) - \
-        len(eta) - 7
+        len(eta) - 8
     equals = '=' * int(bar_len * percent)
     spaces = ' ' * (bar_len - len(equals))
 

@@ -24,6 +24,11 @@ Usage:
                             Pack to download
       -d DESTINATION_DIR, --destination DESTINATION_DIR
                             Location to download to
+      -p PACKNUMBERS, --packnumbers PACKNUMBERS
+                            Comma separated pack numbers to download
+
+
+The packnumbers and packname are mutually exclusive. If you provide packnumbers, the packname argument will be ignored.
 
 Optionally set options in lazydcc.conf - there are a whole 5 options to set.
 These options are overridden by command line flags if present.
@@ -34,6 +39,20 @@ Example run:
     Botnick not given. Please provide or press Control C to quit: colourfulfrown
     Channel not given. Please provide or press Control C to quit: insertinfohere
     Packname not given. Please provide or press Control C to quit: make sure it is somewhat unique
+    Packnumbers not given. Please provide or press Control C to quit: 1,2,3,4,5
     Server not given. Please provide or press Control C to quit: irc.something.blah
     Xdccbot not given. Please provide or press Control C to quit: IServePacks
+
+Examples of providing arguments:
+
+    ~ cat lazydcc.conf
+    [lazydcc]
+    server = irc.example.net
+    channel = example
+    botnick = colourfulfrown
+    xdccbot = IServePacks
+    destination_dir = /home/me/packs/
+    ~ python lazydcc.py -c lazydcc.conf -n 'some pack by name'
+    ~ python lazydcc.py -c lazydcc.conf -p '1,2,3,4,5'
+
 

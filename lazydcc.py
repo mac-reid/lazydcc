@@ -203,9 +203,12 @@ def parse_args():
     parser.add_argument('-b', '--xdccbot', help='Bot name to get packs from',
                         dest='xdccbot')
     parser.add_argument('-n', '--pack-name', help='Pack to download',
-                        dest='packname')
+                        dest='packname', default='default')
     parser.add_argument('-d', '--destination', help='Location to download to',
                         dest='destination_dir')
+    parser.add_argument('-p', '--packnumbers',
+                        help='Comma separated pack numbers to download',
+                        dest='packnumbers', default='default')
     args = parser.parse_args(remaining_args)
     return args
 
@@ -218,8 +221,8 @@ def setup():
     if not args.destination_dir:
         args.destination_dir = './'
 
-    return tuple(ask_user_for(i[0].title()) if not i[1] else i[1]
-                 for i in args._get_kwargs())
+    return tuple(ask_user_for(i[0].title()) if not i[1] or i[1] == 'default'
+                 else i[1] for i in args._get_kwargs())
 
 
 def register(irc, server, botnick, channel, log):
@@ -253,7 +256,7 @@ def register(irc, server, botnick, channel, log):
 
 def begin():
     'Initialization'
-    botnick, channel, _, dest, pack_name, server, xdccbot = setup()
+    botnick, channel, _, dest, pack_name, packnumbers, server, xdccbot = setup()
 
     if not channel.startswith('#'):
         channel = '#%s' % channel
@@ -275,8 +278,14 @@ def begin():
             irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             print 'Connecting to %s' % server
             register(irc, server, botnick, channel, mylog)
-
-            download_queue = get_packlist(irc, xdccbot, pack_name, mylog, dest)
+            if packnumbers and packnumbers != 'default':
+                if re.match(r'^(\d+,|\d+)+$', packnumbers):
+                    download_queue = [int(a) for a in packnumbers.split(',')]
+                else:
+                    print >> sys.stderr, 'Packnumbers must be numbers separated by commas (1,2,3,4)'
+                    sys.exit(1)
+            else:
+                download_queue = get_packlist(irc, xdccbot, pack_name, mylog, dest)
             process_forever(irc, xdccbot, mylog, download_queue, dest)
         except KeyboardInterrupt:
             sys.exit(0)
